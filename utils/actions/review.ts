@@ -85,40 +85,40 @@ export async function createReviewAction(prevState: any, formData: FormData) {
  * const reviews = await fetchPropertyReviews('prop_123');
  * ```
  */
-export async function fetchPropertyReviews(propertyId: string) {
-  // Use cache to optimize review queries (10 minute cache)
-  const getCachedReviews = unstable_cache(
-    async (id: string) => {
-      return db.review.findMany({
-        where: {
-          propertyId: id,
-        },
-        select: {
-          id: true,
-          rating: true,
-          comment: true,
-          createdAt: true,
-          profile: {
-            select: {
-              firstName: true,
-              profileImage: true,
-            },
+// Module-level cache for property reviews (10 minute cache)
+const getCachedReviews = unstable_cache(
+  async (propertyId: string) => {
+    return db.review.findMany({
+      where: { propertyId },
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        profile: {
+          select: {
+            firstName: true,
+            profileImage: true,
           },
         },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        // Limit results to avoid excessive data loading
-        take: 50,
-      });
-    },
-    ['property-reviews'],
-    {
-      revalidate: 600, // 10 minute cache
-      tags: ['property-reviews', `property-${propertyId}`],
-    }
-  );
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    });
+  },
+  ['property-reviews'],
+  {
+    revalidate: 600, // 10 minute cache
+    tags: ['property-reviews'],
+  }
+);
 
+/**
+ * Fetch all reviews for a property
+ *
+ * Uses module-level caching to optimize queries (10 minute cache).
+ */
+export async function fetchPropertyReviews(propertyId: string) {
   return getCachedReviews(propertyId);
 }
 
@@ -235,36 +235,33 @@ export async function findExistingReview(
  * // { rating: '4.5', count: 10 }
  * ```
  */
+// Module-level cache for property ratings (15 minute cache)
+const getCachedRating = unstable_cache(
+  async (propertyId: string) => {
+    const result = await db.review.groupBy({
+      by: ['propertyId'],
+      _avg: { rating: true },
+      _count: { rating: true },
+      where: { propertyId },
+    });
+    return {
+      rating: result[0]?._avg.rating?.toFixed(1) ?? '0',
+      count: result[0]?._count.rating ?? 0,
+    };
+  },
+  ['property-rating'],
+  {
+    revalidate: 900, // 15 minute cache
+    tags: ['property-rating'],
+  }
+);
+
+/**
+ * Fetch property rating statistics
+ *
+ * Uses module-level caching to optimize queries (15 minute cache).
+ */
 export async function fetchPropertyRating(propertyId: string) {
-  // Use cache to optimize rating queries (15 minute cache)
-  const getCachedRating = unstable_cache(
-    async (id: string) => {
-      const result = await db.review.groupBy({
-        by: ['propertyId'],
-        _avg: {
-          rating: true,
-        },
-        _count: {
-          rating: true,
-        },
-        where: {
-          propertyId: id,
-        },
-      });
-
-      // Return default values if no reviews
-      return {
-        rating: result[0]?._avg.rating?.toFixed(1) ?? '0',
-        count: result[0]?._count.rating ?? 0,
-      };
-    },
-    ['property-rating'],
-    {
-      revalidate: 900, // 15 minute cache
-      tags: ['property-rating', `property-${propertyId}`],
-    }
-  );
-
   return getCachedRating(propertyId);
 }
 

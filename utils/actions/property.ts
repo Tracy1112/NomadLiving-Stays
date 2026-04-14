@@ -81,21 +81,45 @@ export async function createPropertyAction(
   redirect('/');
 }
 
+// Module-level cache for property listings (10 minute cache)
+const getCachedProperties = unstable_cache(
+  async (searchParam: string, categoryParam?: string) => {
+    return db.property.findMany({
+      where: {
+        ...(categoryParam && { category: categoryParam }),
+        ...(searchParam && {
+          OR: [
+            { name: { contains: searchParam, mode: 'insensitive' } },
+            { tagline: { contains: searchParam, mode: 'insensitive' } },
+          ],
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        tagline: true,
+        country: true,
+        price: true,
+        image: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 100,
+    });
+  },
+  ['properties'],
+  {
+    revalidate: 600, // 10 minute cache
+    tags: ['properties'],
+  }
+);
+
 /**
  * Fetch properties with optional search and category filters
- * 
- * Uses caching to optimize frequent queries (5 minute cache).
+ *
+ * Uses module-level caching to optimize frequent queries (10 minute cache).
  * Limits results to 100 properties to avoid excessive data loading.
- * 
- * @param {Object} options - Search options
- * @param {string} [options.search=''] - Search term to filter by name or tagline
- * @param {string} [options.category] - Category filter
- * @returns {Promise<Property[]>} Array of properties matching the criteria
- * 
- * @example
- * ```ts
- * const properties = await fetchProperties({ search: 'beach', category: 'cabin' });
- * ```
  */
 export async function fetchProperties({
   search = '',
@@ -104,41 +128,6 @@ export async function fetchProperties({
   search?: string;
   category?: string;
 }) {
-  // Use cache to optimize frequent queries (5 minute cache)
-  const getCachedProperties = unstable_cache(
-    async (searchParam: string, categoryParam?: string) => {
-      return db.property.findMany({
-        where: {
-          ...(categoryParam && { category: categoryParam }),
-          ...(searchParam && {
-            OR: [
-              { name: { contains: searchParam, mode: 'insensitive' } },
-              { tagline: { contains: searchParam, mode: 'insensitive' } },
-            ],
-          }),
-        },
-        select: {
-          id: true,
-          name: true,
-          tagline: true,
-          country: true,
-          price: true,
-          image: true,
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-        // Limit results to avoid excessive data loading
-        take: 100,
-      });
-    },
-    ['properties'],
-    {
-      revalidate: 300, // 5 minute cache
-      tags: ['properties'],
-    }
-  );
-
   return getCachedProperties(search, category);
 }
 
@@ -156,43 +145,46 @@ export async function fetchProperties({
  * const property = await fetchPropertyDetails('prop_123');
  * ```
  */
-export async function fetchPropertyDetails(id: string) {
-  // Use cache to optimize property detail queries (10 minute cache)
-  const getCachedPropertyDetails = unstable_cache(
-    async (propertyId: string) => {
-      return db.property.findUnique({
-        where: {
-          id: propertyId,
-        },
-        include: {
-          profile: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              profileImage: true,
-              clerkId: true,
-            },
-          },
-          bookings: {
-            select: {
-              checkIn: true,
-              checkOut: true,
-            },
-            where: {
-              paymentStatus: true, // Only get confirmed bookings
-            },
+// Module-level cache for property detail pages (10 minute cache)
+const getCachedPropertyDetails = unstable_cache(
+  async (propertyId: string) => {
+    return db.property.findUnique({
+      where: { id: propertyId },
+      include: {
+        profile: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            profileImage: true,
+            clerkId: true,
           },
         },
-      });
-    },
-    ['property-details'],
-    {
-      revalidate: 600, // 10 minute cache
-      tags: ['property-details', `property-${id}`],
-    }
-  );
+        bookings: {
+          select: {
+            checkIn: true,
+            checkOut: true,
+          },
+          where: {
+            paymentStatus: true,
+          },
+        },
+      },
+    });
+  },
+  ['property-details'],
+  {
+    revalidate: 600, // 10 minute cache
+    tags: ['property-details'],
+  }
+);
 
+/**
+ * Fetch detailed property information by ID
+ *
+ * Uses module-level caching to optimize queries (10 minute cache).
+ */
+export async function fetchPropertyDetails(id: string) {
   return getCachedPropertyDetails(id);
 }
 
