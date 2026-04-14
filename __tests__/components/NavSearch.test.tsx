@@ -108,8 +108,8 @@ describe('NavSearch', () => {
     const input = screen.getByTestId('search-input')
     expect(input).toHaveValue('beach')
 
-    // Clear search params and rerender
-    mockSearchParams.delete('search')
+    // Simulate Next.js returning a new searchParams object on navigation
+    mockSearchParams = new URLSearchParams()
     rerender(<NavSearch />)
 
     expect(input).toHaveValue('')
