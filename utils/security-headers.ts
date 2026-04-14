@@ -46,12 +46,20 @@ const CSP_POLICY = {
     'https://api.stripe.com', // Stripe API
     'https://*.clerk.accounts.dev', // Clerk
     'https://*.clerk.com', // Clerk
+    'https://*.accounts.dev', // Clerk dev instance (e.g. devoted-mastiff-36.accounts.dev)
+    'https://clerk.com', // Clerk
+  ],
+  workerSrc: [
+    "'self'",
+    'blob:', // Clerk creates workers from blob URLs
   ],
   frameSrc: [
     "'self'",
     'https://js.stripe.com', // Stripe checkout
     'https://*.stripe.com', // Stripe
     'https://*.clerk.accounts.dev', // Clerk
+    'https://*.accounts.dev', // Clerk dev instance
+    'https://*.clerk.com', // Clerk
   ],
   objectSrc: ["'none'"],
   baseUri: ["'self'"],
