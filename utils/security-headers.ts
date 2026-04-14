@@ -61,6 +61,14 @@ const CSP_POLICY = {
 } as const;
 
 /**
+ * Convert camelCase to kebab-case for CSP directive names
+ * e.g. "defaultSrc" -> "default-src", "imgSrc" -> "img-src"
+ */
+function camelToKebab(str: string): string {
+  return str.replace(/([A-Z])/g, (match) => `-${match.toLowerCase()}`);
+}
+
+/**
  * Generate Content Security Policy header string
  */
 function generateCSP(): string {
@@ -68,9 +76,14 @@ function generateCSP(): string {
 
   for (const [directive, sources] of Object.entries(CSP_POLICY)) {
     if (sources === undefined) continue;
-    
-    if (Array.isArray(sources) && sources.length > 0) {
-      directives.push(`${directive} ${sources.join(' ')}`);
+
+    const kebabDirective = camelToKebab(directive);
+
+    if (Array.isArray(sources) && sources.length === 0) {
+      // Directives like upgrade-insecure-requests take no values
+      directives.push(kebabDirective);
+    } else if (Array.isArray(sources) && sources.length > 0) {
+      directives.push(`${kebabDirective} ${sources.join(' ')}`);
     }
   }
 
