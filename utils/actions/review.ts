@@ -64,7 +64,6 @@ export async function createReviewAction(prevState: any, formData: FormData) {
     revalidatePath(`/properties/${validatedFields.propertyId}`);
     revalidateTag('property-reviews');
     revalidateTag('property-rating');
-    revalidateTag(`property-${validatedFields.propertyId}`);
     return { message: 'Review submitted successfully' };
   } catch (error) {
     return handleServerActionError(error);

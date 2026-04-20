@@ -239,6 +239,10 @@ export async function updatePropertyAction(
       },
     });
 
+    // Invalidate caches/pages affected by property edits
+    revalidateTag('properties');
+    revalidateTag('property-details');
+    revalidatePath(`/properties/${propertyId}`);
     revalidatePath(`/rentals/${propertyId}/edit`);
     return { message: 'Update Successful' };
   } catch (error) {
@@ -308,6 +312,11 @@ export async function updatePropertyImageAction(
         image: fullPath,
       },
     });
+
+    // Invalidate caches/pages affected by property image updates
+    revalidateTag('properties');
+    revalidateTag('property-details');
+    revalidatePath(`/properties/${propertyId}`);
     revalidatePath(`/rentals/${propertyId}/edit`);
     return { message: 'Property Image Updated Successful' };
   } catch (error) {
