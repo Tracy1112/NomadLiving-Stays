@@ -1,6 +1,6 @@
 # 🏕️ NomadLiving Stays
 
-> Next.js SSR booking platform for curated glamping sites — part of the NomadLiving full-stack ecosystem.
+> Next.js SSR booking platform for curated glamping sites — part of the NomadLiving ecosystem.
 
 [![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Site-00C7B7?style=for-the-badge&logo=vercel&logoColor=white)](https://nomadliving-stays.vercel.app)
 [![CI](https://img.shields.io/badge/CI-Passing-success?style=for-the-badge&logo=github-actions&logoColor=white)](https://github.com/Tracy1112/NomadLiving-Stays/actions)
