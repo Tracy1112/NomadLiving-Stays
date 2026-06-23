@@ -10,9 +10,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "keep-alive": "node scripts/keep-alive.js"
+    "keep-alive": "node scripts/keep-alive.js",
+    "seed:rag": "node --env-file=.env.local scripts/ingest-rag.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1075.0",
     "@clerk/nextjs": "^5.0.1",
     "@prisma/client": "^5.12.1",
     "@radix-ui/react-checkbox": "^1.0.4",
@@ -33,6 +35,7 @@
     "clsx": "^2.1.0",
     "date-fns": "^3.6.0",
     "leaflet": "^1.9.4",
+    "mongodb": "^7.3.0",
     "next": "14.2.1",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",

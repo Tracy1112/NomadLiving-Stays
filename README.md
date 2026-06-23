@@ -59,6 +59,91 @@ Open http://localhost:3000
 | **Boutique** | React/Redux e-commerce store | [nomadliving-boutique.vercel.app](https://nomadliving-boutique.vercel.app) |
 | **Ops** | MERN internal dashboard | [nomadliving-ops.vercel.app](https://nomadliving-ops.vercel.app) |
 
+## AI Stays Assistant (RAG)
+
+A retrieval-augmented assistant that answers questions about our stays using **only**
+real Property + Review data, with the source stays shown. Built with **AWS Bedrock**
+(Amazon Titan embeddings + Amazon Nova Lite) and **MongoDB Atlas Vector Search**.
+
+### How it works
+
+**RAG = Retrieval-Augmented Generation.** Instead of relying on the language model's
+memory, we first *retrieve* relevant facts from our own database, then ask the model to
+answer using only those facts. This keeps answers grounded and prevents hallucination.
+
+### Data flow
+
+```
+User question
+   │
+   ▼
+POST /api/ai-assistant            (server-side only — AWS keys never reach the browser)
+   │
+   ├─ 1. Embed question        → Titan Text Embeddings V2 (1024-dim vector)
+   ├─ 2. Retrieve              → Atlas $vectorSearch on `rag_chunks`
+   │                             (index: property_review_index, cosine, top 5 of 50 candidates)
+   ├─ 3. Build grounded prompt → inject the 5 chunks as "Context"
+   ├─ 4. Generate              → Amazon Nova Lite, "answer ONLY from context"
+   ▼
+{ answer, sources }            → UI shows answer + source stay cards (with match score)
+```
+
+Offline, a one-time ingestion script turns each stay (property details + its reviews)
+into one text chunk, embeds it with Titan, and stores chunk + vector in `rag_chunks`.
+
+### Key files
+
+| File | Role |
+|------|------|
+| `scripts/ingest-rag.mjs` | One-time ingestion: build chunks, embed, upsert into `rag_chunks` |
+| `app/api/ai-assistant/route.ts` | Server route: embed → vector search → Nova Lite → `{ answer, sources }` |
+| `app/assistant/page.tsx` | Minimal UI: question box, answer, source stay cards |
+
+### Setup & run
+
+Requires these vars in `.env.local` (already configured in this project):
+`AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `BEDROCK_EMBED_MODEL_ID`,
+`BEDROCK_CHAT_MODEL_ID`, `MONGODB_URI`, `MONGODB_DB`, `RAG_COLLECTION`, `ATLAS_VECTOR_INDEX`.
+
+```bash
+# 1. Install (one time)
+npm install
+
+# 2. Populate the vector store (~20 stays, idempotent, run once)
+npm run seed:rag
+
+# 3. Start the app
+npm run dev
+```
+
+### Test the assistant
+
+1. Sign in, then open **http://localhost:3000/assistant** (or click **"ask ai"** in the nav).
+2. Ask a question, e.g. *"Which stays are near Sydney or in New South Wales?"*
+3. You'll get a grounded answer plus source stay cards. Weak matches are labelled
+   **"related"** instead of **"strong match"** for transparency.
+
+> The route is protected by Clerk middleware, so test it while signed in (through the UI),
+> not via an unauthenticated `curl`.
+
+### Design choices & trade-offs
+
+- **Vector search in a separate `rag_chunks` collection**, not inside `Property` — the AI
+  feature can't corrupt real booking/listing data; clean separation.
+- **Prisma for the app, native `mongodb` driver for RAG** — Prisma doesn't support
+  `$vectorSearch`, so retrieval uses the driver directly.
+- **Idempotent ingestion** (deterministic `_id` = `property:<stayId>`) — re-running updates
+  in place instead of creating duplicates, and avoids re-paying for embeddings.
+- **Grounded prompt + explicit fallback** — the model must answer from context or say it
+  doesn't have the info; this is the anti-hallucination guarantee.
+- **Label, don't hide, weak sources** — top-K always returns 5 results; rather than a hidden
+  score threshold (which could hide a real source in a demo), weak matches are shown but
+  labelled "related".
+- **Cost control** — embeddings precomputed and capped at 20 stays; only the live question is
+  embedded at query time; the LLM call is skipped entirely when nothing relevant is found.
+- **Non-streaming v1** — simpler to reason about and demo; streaming can be added later.
+
+
 ## Developer
 
 **Tracy Kong** — Full-Stack Software Engineer, Sydney 🇦🇺
